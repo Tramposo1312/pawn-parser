@@ -7,6 +7,8 @@ type TokenType string
 type Token struct {
 	Type    TokenType
 	Literal string
+	Line    int
+	Column  int
 }
 
 const (
@@ -15,11 +17,11 @@ const (
 	COMMENT           = "COMMENT"
 
 	// Identifiers + literals
-	IDENT  = "IDENT"
-	INT    = "INT"
-	FLOAT  = "FLOAT"
-	CHAR   = "CHAR"
-	STRING = "STRING"
+	IDENT  = "IDENT"  // add, foobar, x, y, ...
+	INT    = "INT"    // 123456
+	FLOAT  = "FLOAT"  // 123.456
+	CHAR   = "CHAR"   // 'a'
+	STRING = "STRING" // "abc"
 
 	// Operators
 	ADD            = "+"
@@ -46,7 +48,6 @@ const (
 	AND_NOT_ASSIGN = "&^="
 	LAND           = "&&"
 	LOR            = "||"
-	ARROW          = "<-"
 	INC            = "++"
 	DEC            = "--"
 	EQL            = "=="
@@ -57,6 +58,8 @@ const (
 	NEQ            = "!="
 	LEQ            = "<="
 	GEQ            = ">="
+	ELLIPSIS       = "..."
+	TILDE          = "~"
 
 	// Delimiters
 	LPAREN    = "("
@@ -71,64 +74,112 @@ const (
 	COLON     = ":"
 
 	// Keywords
-	BREAK    = "BREAK"
-	CASE     = "CASE"
-	CONST    = "CONST"
-	CONTINUE = "CONTINUE"
-	DEFAULT  = "DEFAULT"
-	DO       = "DO"
-	ELSE     = "ELSE"
-	ENUM     = "ENUM"
-	FOR      = "FOR"
-	GOTO     = "GOTO"
-	IF       = "IF"
-	NEW      = "NEW"
-	RETURN   = "RETURN"
-	SIZEOF   = "SIZEOF"
-	STATIC   = "STATIC"
-	SWITCH   = "SWITCH"
-	WHILE    = "WHILE"
+	BREAK    = "break"
+	CASE     = "case"
+	CONST    = "const"
+	CONTINUE = "continue"
+	DEFAULT  = "default"
+	DO       = "do"
+	ELSE     = "else"
+	ENUM     = "enum"
+	FOR      = "for"
+	GOTO     = "goto"
+	IF       = "if"
+	NEW      = "new"
+	RETURN   = "return"
+	SIZEOF   = "sizeof"
+	STATIC   = "static"
+	SWITCH   = "switch"
+	WHILE    = "while"
 
-	// Pawn keywords
-	ASSERT   = "ASSERT"
-	DEFINED  = "DEFINED"
-	FORWARD  = "FORWARD"
-	NATIVE   = "NATIVE"
-	OPERATOR = "OPERATOR"
-	PUBLIC   = "PUBLIC"
-	STOCK    = "STOCK"
-	TAGOF    = "TAGOF"
+	// Pawn-specific keywords
+	ASSERT     = "assert"
+	DEFINED    = "defined"
+	FORWARD    = "forward"
+	NATIVE     = "native"
+	OPERATOR   = "operator"
+	PUBLIC     = "public"
+	STOCK      = "stock"
+	TAGOF      = "tagof"
+	CHAR_      = "char"
+	FLOAT_     = "float"
+	BOOL       = "bool"
+	VOID       = "void"
+	TRUE       = "true"
+	FALSE      = "false"
+	NULL       = "null"
+	FOREACH    = "foreach"
+	SLEEP      = "sleep"
+	STATE      = "state"
+	EXIT       = "exit"
+	TIMER      = "timer"
+	ITERFUNC   = "iterfunc"
+	HOOK       = "hook"
+	INLINE     = "inline"
+	MASTER     = "master"
+	TASK       = "task"
+	PTASK      = "ptask"
+	FOREIGN    = "foreign"
+	GLOBAL     = "global"
+	REMOTEFUNC = "remotefunc"
+	USING      = "using"
+	YIELD      = "yield"
+	LOADTEXT   = "loadtext"
 
 	// Preprocessor directives
 	DIRECTIVE = "#"
 )
 
 var keywords = map[string]TokenType{
-	"break":    BREAK,
-	"case":     CASE,
-	"const":    CONST,
-	"continue": CONTINUE,
-	"default":  DEFAULT,
-	"do":       DO,
-	"else":     ELSE,
-	"enum":     ENUM,
-	"for":      FOR,
-	"goto":     GOTO,
-	"if":       IF,
-	"new":      NEW,
-	"return":   RETURN,
-	"sizeof":   SIZEOF,
-	"static":   STATIC,
-	"switch":   SWITCH,
-	"while":    WHILE,
-	"assert":   ASSERT,
-	"defined":  DEFINED,
-	"forward":  FORWARD,
-	"native":   NATIVE,
-	"operator": OPERATOR,
-	"public":   PUBLIC,
-	"stock":    STOCK,
-	"tagof":    TAGOF,
+	"break":      BREAK,
+	"case":       CASE,
+	"const":      CONST,
+	"continue":   CONTINUE,
+	"default":    DEFAULT,
+	"do":         DO,
+	"else":       ELSE,
+	"enum":       ENUM,
+	"for":        FOR,
+	"goto":       GOTO,
+	"if":         IF,
+	"new":        NEW,
+	"return":     RETURN,
+	"sizeof":     SIZEOF,
+	"static":     STATIC,
+	"switch":     SWITCH,
+	"while":      WHILE,
+	"assert":     ASSERT,
+	"defined":    DEFINED,
+	"forward":    FORWARD,
+	"native":     NATIVE,
+	"operator":   OPERATOR,
+	"public":     PUBLIC,
+	"stock":      STOCK,
+	"tagof":      TAGOF,
+	"char":       CHAR_,
+	"float":      FLOAT_,
+	"bool":       BOOL,
+	"void":       VOID,
+	"true":       TRUE,
+	"false":      FALSE,
+	"null":       NULL,
+	"foreach":    FOREACH,
+	"sleep":      SLEEP,
+	"state":      STATE,
+	"exit":       EXIT,
+	"timer":      TIMER,
+	"iterfunc":   ITERFUNC,
+	"hook":       HOOK,
+	"inline":     INLINE,
+	"master":     MASTER,
+	"task":       TASK,
+	"ptask":      PTASK,
+	"foreign":    FOREIGN,
+	"global":     GLOBAL,
+	"remotefunc": REMOTEFUNC,
+	"using":      USING,
+	"yield":      YIELD,
+	"loadtext":   LOADTEXT,
 }
 
 func LookupIdent(ident string) TokenType {

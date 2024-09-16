@@ -11,22 +11,21 @@ type Lexer struct {
 	position     int
 	readPosition int
 	ch           byte
+	line         int
+	column       int
 }
 
 func New(input string) *Lexer {
-	l := &Lexer{input: input}
+	l := &Lexer{input: input, line: 1, column: 0}
 	l.readChar()
 	return l
 }
 
-func (l *Lexer) readChar() {
+func (l *Lexer) peekChar() byte {
 	if l.readPosition >= len(l.input) {
-		l.ch = 0
-	} else {
-		l.ch = l.input[l.readPosition]
+		return 0
 	}
-	l.position = l.readPosition
-	l.readPosition++
+	return l.input[l.readPosition]
 }
 
 func (l *Lexer) NextToken() token.Token {
@@ -37,49 +36,86 @@ func (l *Lexer) NextToken() token.Token {
 	switch l.ch {
 	case '=':
 		if l.peekChar() == '=' {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.EQL, Literal: string(ch) + string(l.ch)}
+			tok = l.makeTwoCharToken(token.EQL)
 		} else {
-			tok = newToken(token.ASSIGN, l.ch)
+			tok = l.makeToken(token.ASSIGN)
 		}
 	case '+':
-		if l.peekChar() == '=' {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.ADD_ASSIGN, Literal: string(ch) + string(l.ch)}
-		} else if l.peekChar() == '+' {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.INC, Literal: string(ch) + string(l.ch)}
-		} else {
-			tok = newToken(token.ADD, l.ch)
-		}
+		tok = l.handlePlusOperator()
 	case '-':
+		tok = l.handleMinusOperator()
+	case '!':
 		if l.peekChar() == '=' {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.SUB_ASSIGN, Literal: string(ch) + string(l.ch)}
-		} else if l.peekChar() == '-' {
-			ch := l.ch
-			l.readChar()
-			tok = token.Token{Type: token.DEC, Literal: string(ch) + string(l.ch)}
+			tok = l.makeTwoCharToken(token.NEQ)
 		} else {
-			tok = newToken(token.SUB, l.ch)
+			tok = l.makeToken(token.NOT)
 		}
-	// Add cases for other operators and delimiters
+	case '/':
+		if l.peekChar() == '/' {
+			tok.Literal = l.readLineComment()
+			tok.Type = token.COMMENT
+		} else if l.peekChar() == '*' {
+			tok.Literal = l.readBlockComment()
+			tok.Type = token.COMMENT
+		} else if l.peekChar() == '=' {
+			tok = l.makeTwoCharToken(token.QUO_ASSIGN)
+		} else {
+			tok = l.makeToken(token.QUO)
+		}
+	case '*':
+		if l.peekChar() == '=' {
+			tok = l.makeTwoCharToken(token.MUL_ASSIGN)
+		} else {
+			tok = l.makeToken(token.MUL)
+		}
+	case '<':
+		tok = l.handleLessThanOperator()
+	case '>':
+		tok = l.handleGreaterThanOperator()
 	case ';':
-		tok = newToken(token.SEMICOLON, l.ch)
-	case '(':
-		tok = newToken(token.LPAREN, l.ch)
-	case ')':
-		tok = newToken(token.RPAREN, l.ch)
+		tok = l.makeToken(token.SEMICOLON)
+	case ':':
+		tok = l.makeToken(token.COLON)
 	case ',':
-		tok = newToken(token.COMMA, l.ch)
+		tok = l.makeToken(token.COMMA)
+	case '.':
+		tok = l.makeToken(token.PERIOD)
+	case '(':
+		tok = l.makeToken(token.LPAREN)
+	case ')':
+		tok = l.makeToken(token.RPAREN)
 	case '{':
-		tok = newToken(token.LBRACE, l.ch)
+		tok = l.makeToken(token.LBRACE)
 	case '}':
-		tok = newToken(token.RBRACE, l.ch)
+		tok = l.makeToken(token.RBRACE)
+	case '[':
+		tok = l.makeToken(token.LBRACK)
+	case ']':
+		tok = l.makeToken(token.RBRACK)
+	case '&':
+		tok = l.handleAmpersandOperator()
+	case '|':
+		tok = l.handlePipeOperator()
+	case '^':
+		if l.peekChar() == '=' {
+			tok = l.makeTwoCharToken(token.XOR_ASSIGN)
+		} else {
+			tok = l.makeToken(token.XOR)
+		}
+	case '%':
+		if l.peekChar() == '=' {
+			tok = l.makeTwoCharToken(token.REM_ASSIGN)
+		} else {
+			tok = l.makeToken(token.REM)
+		}
+	case '"':
+		tok.Type = token.STRING
+		tok.Literal = l.readString()
+	case '\'':
+		tok.Type = token.CHAR
+		tok.Literal = l.readChar()
+	case '#':
+		tok = l.readPreprocessorDirective()
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
@@ -91,7 +127,7 @@ func (l *Lexer) NextToken() token.Token {
 		} else if isDigit(l.ch) {
 			return l.readNumber()
 		} else {
-			tok = newToken(token.ILLEGAL, l.ch)
+			tok = l.makeToken(token.ILLEGAL)
 		}
 	}
 
@@ -99,10 +135,82 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-func (l *Lexer) skipWhitespace() {
-	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
-		l.readChar()
+func (l *Lexer) makeToken(tokenType token.TokenType) token.Token {
+	return token.Token{Type: tokenType, Literal: string(l.ch), Line: l.line, Column: l.column}
+}
+
+func (l *Lexer) makeTwoCharToken(tokenType token.TokenType) token.Token {
+	ch := l.ch
+	l.readChar()
+	literal := string(ch) + string(l.ch)
+	return token.Token{Type: tokenType, Literal: literal, Line: l.line, Column: l.column - 1}
+}
+
+func (l *Lexer) handlePlusOperator() token.Token {
+	if l.peekChar() == '=' {
+		return l.makeTwoCharToken(token.ADD_ASSIGN)
+	} else if l.peekChar() == '+' {
+		return l.makeTwoCharToken(token.INC)
 	}
+	return l.makeToken(token.ADD)
+}
+
+func (l *Lexer) handleMinusOperator() token.Token {
+	if l.peekChar() == '=' {
+		return l.makeTwoCharToken(token.SUB_ASSIGN)
+	} else if l.peekChar() == '-' {
+		return l.makeTwoCharToken(token.DEC)
+	}
+	return l.makeToken(token.SUB)
+}
+func (l *Lexer) handleLessThanOperator() token.Token {
+	if l.peekChar() == '=' {
+		return l.makeTwoCharToken(token.LEQ)
+	} else if l.peekChar() == '<' {
+		l.readChar()
+		if l.peekChar() == '=' {
+			return l.makeTwoCharToken(token.SHL_ASSIGN)
+		}
+		return token.Token{Type: token.SHL, Literal: "<<", Line: l.line, Column: l.column - 1}
+	}
+	return l.makeToken(token.LSS)
+}
+
+func (l *Lexer) handleGreaterThanOperator() token.Token {
+	if l.peekChar() == '=' {
+		return l.makeTwoCharToken(token.GEQ)
+	} else if l.peekChar() == '>' {
+		l.readChar()
+		if l.peekChar() == '=' {
+			return l.makeTwoCharToken(token.SHR_ASSIGN)
+		}
+		return token.Token{Type: token.SHR, Literal: ">>", Line: l.line, Column: l.column - 1}
+	}
+	return l.makeToken(token.GTR)
+}
+
+func (l *Lexer) handleAmpersandOperator() token.Token {
+	if l.peekChar() == '&' {
+		return l.makeTwoCharToken(token.LAND)
+	} else if l.peekChar() == '=' {
+		return l.makeTwoCharToken(token.AND_ASSIGN)
+	} else if l.peekChar() == '^' {
+		l.readChar()
+		if l.peekChar() == '=' {
+			return l.makeTwoCharToken(token.AND_NOT_ASSIGN)
+		}
+		return token.Token{Type: token.AND_NOT, Literal: "&^", Line: l.line, Column: l.column - 1}
+	}
+	return l.makeToken(token.AND)
+}
+
+func (l *Lexer) handlePipeOperator() token.Token {
+	if l.peekChar() == '|' {
+		return l.makeTwoCharToken(token.LOR)
+	} else if l.peekChar() == '=' {
+		return l.makeTwoCharToken(token.OR_ASSIGN)
+	}
+	return l.makeToken(token.OR)
 }
 
 func (l *Lexer) readIdentifier() string {
@@ -115,34 +223,127 @@ func (l *Lexer) readIdentifier() string {
 
 func (l *Lexer) readNumber() token.Token {
 	position := l.position
+	if l.ch == '0' && (l.peekChar() == 'x' || l.peekChar() == 'X') {
+		// Hexadecimal
+		l.readChar() // consume '0'
+		l.readChar() // consume 'x' or 'X'
+		for isHexDigit(l.ch) {
+			l.readChar()
+		}
+		return token.Token{Type: token.INT, Literal: l.input[position:l.position], Line: l.line, Column: l.column - (l.position - position)}
+	} else if l.ch == '0' && (l.peekChar() == 'b' || l.peekChar() == 'B') {
+		// Binary
+		l.readChar() // consume '0'
+		l.readChar() // consume 'b' or 'B'
+		for l.ch == '0' || l.ch == '1' {
+			l.readChar()
+		}
+		return token.Token{Type: token.INT, Literal: l.input[position:l.position], Line: l.line, Column: l.column - (l.position - position)}
+	}
+
 	for isDigit(l.ch) {
 		l.readChar()
 	}
 	if l.ch == '.' && isDigit(l.peekChar()) {
-		l.readChar()
+		l.readChar() // consume '.'
 		for isDigit(l.ch) {
 			l.readChar()
 		}
-		return token.Token{Type: token.FLOAT, Literal: l.input[position:l.position]}
+		return token.Token{Type: token.FLOAT, Literal: l.input[position:l.position], Line: l.line, Column: l.column - (l.position - position)}
 	}
-	return token.Token{Type: token.INT, Literal: l.input[position:l.position]}
+	return token.Token{Type: token.INT, Literal: l.input[position:l.position], Line: l.line, Column: l.column - (l.position - position)}
 }
 
-func (l *Lexer) peekChar() byte {
-	if l.readPosition >= len(l.input) {
-		return 0
+func (l *Lexer) readString() string {
+	position := l.position + 1
+	for {
+		l.readChar()
+		if l.ch == '"' || l.ch == 0 {
+			break
+		}
+		if l.ch == '\\' {
+			l.readChar()
+		}
 	}
-	return l.input[l.readPosition]
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) readChar() string {
+	if l.readPosition >= len(l.input) {
+		l.ch = 0 // End of input
+		return ""
+	}
+	l.ch = l.input[l.readPosition]
+	l.position = l.readPosition
+	l.readPosition++
+	return string(l.ch)
+}
+
+func (l *Lexer) readCharLiteral() string {
+	position := l.position + 1 // Start after the opening quote
+	for {
+		l.readChar()
+		if l.ch == '\'' || l.ch == 0 { // End of literal or input
+			break
+		}
+		if l.ch == '\\' {
+			l.readChar()
+		}
+	}
+	return l.input[position:l.position]
+}
+func (l *Lexer) readLineComment() string {
+	position := l.position
+	for l.ch != '\n' && l.ch != 0 {
+		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) readBlockComment() string {
+	position := l.position
+	for {
+		if l.ch == 0 {
+			break
+		}
+		if l.ch == '*' && l.peekChar() == '/' {
+			l.readChar()
+			l.readChar()
+			break
+		}
+		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) readPreprocessorDirective() token.Token {
+	position := l.position
+	l.readChar() // consume '#'
+	for isLetter(l.ch) {
+		l.readChar()
+	}
+	directive := l.input[position:l.position]
+	return token.Token{Type: token.DIRECTIVE, Literal: directive, Line: l.line, Column: l.column - (l.position - position)}
+}
+
+func (l *Lexer) skipWhitespace() {
+	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
+		if l.ch == '\n' {
+			l.line++
+			l.column = 0
+		}
+		l.readChar()
+	}
 }
 
 func isLetter(ch byte) bool {
-	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
+	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || ch == '@'
 }
 
 func isDigit(ch byte) bool {
 	return '0' <= ch && ch <= '9'
 }
 
-func newToken(tokenType token.TokenType, ch byte) token.Token {
-	return token.Token{Type: tokenType, Literal: string(ch)}
+func isHexDigit(ch byte) bool {
+	return isDigit(ch) || ('a' <= ch && ch <= 'f') || ('A' <= ch && ch <= 'F')
 }

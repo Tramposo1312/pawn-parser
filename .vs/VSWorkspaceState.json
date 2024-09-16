@@ -1,7 +1,11 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\ast",
+    "\\lexer",
+    "\\parser",
+    "\\token"
   ],
-  "SelectedNode": "\\C:\\Users\\PC GAMER\\Source\\Repos\\pawn-parser",
+  "SelectedNode": "\\lexer\\lexer_test.go",
   "PreviewInSolutionExplorer": false
 }
