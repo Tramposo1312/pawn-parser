@@ -74,6 +74,7 @@ const (
 	COLON     = ":"
 
 	// Keywords
+	FUNCTION = "function"
 	BREAK    = "break"
 	CASE     = "case"
 	CONST    = "const"
@@ -180,6 +181,7 @@ var keywords = map[string]TokenType{
 	"using":      USING,
 	"yield":      YIELD,
 	"loadtext":   LOADTEXT,
+	"function":   FUNCTION,
 }
 
 func LookupIdent(ident string) TokenType {

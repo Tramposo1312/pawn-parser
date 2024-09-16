@@ -1,5 +1,3 @@
-// lexer/lexer.go
-
 package lexer
 
 import (
