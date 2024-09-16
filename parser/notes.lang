@@ -1,0 +1,69 @@
+// Sample 1: Variable Declarations
+new x = 5;
+new y = 10.5;
+new str[] = "Hello, Pawn!";
+new ch = 'A';
+new flag = true;
+new empty = null;
+
+// Sample 2: Arithmetic Operations
+new result = 10 + 5 * 2;
+new complex = (20 - 5) / 3 + 2 * 4;
+
+// Sample 3: Comparison Operations
+new isGreater = 10 > 5;
+new isEqual = x == y;
+new isNotEqual = 3 != 4;
+
+// Sample 4: Function Declaration
+function add(a, b) {
+    return a + b;
+}
+
+// Sample 5: Function Call
+new sum = add(5, 3);
+
+// Sample 6: If Statement
+if (x > y) {
+    print("x is greater than y");
+} else {
+    print("y is greater than or equal to x");
+}
+
+// Sample 7: While Loop
+new counter = 0;
+while (counter < 5) {
+    print(counter);
+    counter = counter + 1;
+}
+
+// Sample 8: For Loop
+for (new i = 0; i < 5; i++) {
+    print(i);
+}
+
+// Sample 9: Nested Structures
+function complexFunction(x, y) {
+    if (x > y) {
+        while (x > y) {
+            y = y + 1;
+        }
+    } else {
+        for (new i = 0; i < x; i++) {
+            y = y - 1;
+        }
+    }
+    return y;
+}
+
+// Sample 10: Pawn-specific features (tags)
+new Float:pi = 3.14159;
+new bool:isReady = true;
+
+// Sample 11: Array Declaration and Usage
+new array[5] = {1, 2, 3, 4, 5};
+new value = array[2];
+
+// Sample 12: String Concatenation
+new name[] = "Alice";
+new greeting[] = "Hello, " + name + "!";

@@ -111,7 +111,7 @@ func (l *Lexer) NextToken() token.Token {
 		tok.Literal = l.readString()
 	case '\'':
 		tok.Type = token.CHAR
-		tok.Literal = l.readChar()
+		tok.Literal = l.readCharLiteral()
 	case '#':
 		tok = l.readPreprocessorDirective()
 	case 0:
@@ -150,7 +150,7 @@ func (l *Lexer) handlePlusOperator() token.Token {
 	} else if l.peekChar() == '+' {
 		return l.makeTwoCharToken(token.INC)
 	}
-	return l.makeToken(token.ADD)
+	return l.makeToken(token.PLUS)
 }
 
 func (l *Lexer) handleMinusOperator() token.Token {
@@ -159,7 +159,7 @@ func (l *Lexer) handleMinusOperator() token.Token {
 	} else if l.peekChar() == '-' {
 		return l.makeTwoCharToken(token.DEC)
 	}
-	return l.makeToken(token.SUB)
+	return l.makeToken(token.MINUS)
 }
 func (l *Lexer) handleLessThanOperator() token.Token {
 	if l.peekChar() == '=' {
@@ -253,17 +253,14 @@ func (l *Lexer) readNumber() token.Token {
 }
 
 func (l *Lexer) readString() string {
-	position := l.position + 1
+	position := l.position + 1 // Start after the opening quote
 	for {
 		l.readChar()
 		if l.ch == '"' || l.ch == 0 {
 			break
 		}
-		if l.ch == '\\' {
-			l.readChar()
-		}
 	}
-	return l.input[position:l.position]
+	return l.input[position:l.position] // Don't include the closing quote
 }
 
 func (l *Lexer) readChar() string {
@@ -278,18 +275,17 @@ func (l *Lexer) readChar() string {
 }
 
 func (l *Lexer) readCharLiteral() string {
-	position := l.position + 1 // Start after the opening quote
+	position := l.position
 	for {
 		l.readChar()
-		if l.ch == '\'' || l.ch == 0 { // End of literal or input
+		if l.ch == '\'' || l.ch == 0 {
 			break
 		}
-		if l.ch == '\\' {
-			l.readChar()
-		}
 	}
+	l.readChar() // read closing quote
 	return l.input[position:l.position]
 }
+
 func (l *Lexer) readLineComment() string {
 	position := l.position
 	for l.ch != '\n' && l.ch != 0 {

@@ -17,15 +17,15 @@ const (
 	COMMENT           = "COMMENT"
 
 	// Identifiers + literals
-	IDENT  = "IDENT"  // add, foobar, x, y, ...
-	INT    = "INT"    // 123456
-	FLOAT  = "FLOAT"  // 123.456
-	CHAR   = "CHAR"   // 'a'
-	STRING = "STRING" // "abc"
+	IDENT  = "IDENT" // add, foobar, x, y, ...
+	INT    = "INT"
+	FLOAT  = "FLOAT"
+	CHAR   = "CHAR" // 'a'
+	STRING = "STRING"
 
 	// Operators
-	ADD            = "+"
-	SUB            = "-"
+	PLUS           = "+"
+	MINUS          = "-"
 	MUL            = "*"
 	QUO            = "/"
 	REM            = "%"
@@ -55,9 +55,6 @@ const (
 	GTR            = ">"
 	ASSIGN         = "="
 	NOT            = "!"
-	NEQ            = "!="
-	LEQ            = "<="
-	GEQ            = ">="
 	ELLIPSIS       = "..."
 	TILDE          = "~"
 
@@ -129,6 +126,14 @@ const (
 
 	// Preprocessor directives
 	DIRECTIVE = "#"
+
+	// Comparison
+	EQ  = "=="
+	NEQ = "!="
+	LT  = "<"
+	GT  = ">"
+	LEQ = "<="
+	GEQ = ">="
 )
 
 var keywords = map[string]TokenType{
