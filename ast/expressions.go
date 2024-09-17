@@ -7,7 +7,10 @@ import (
 	"github.com/Tramposo1312/pawn-parser/token"
 )
 
-// PrefixExpression represents a prefix expression.
+type PrecedenceProvider interface {
+	TokenPrecedence(token.TokenType) int
+}
+
 type PrefixExpression struct {
 	Token    token.Token // The prefix token, e.g. !
 	Operator string
@@ -18,16 +21,17 @@ func (pe *PrefixExpression) expressionNode()      {}
 func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
 func (pe *PrefixExpression) String() string {
 	var out bytes.Buffer
+
 	out.WriteString("(")
 	out.WriteString(pe.Operator)
 	out.WriteString(pe.Right.String())
 	out.WriteString(")")
+
 	return out.String()
 }
 
-// InfixExpression represents an infix expression.
 type InfixExpression struct {
-	Token    token.Token // The operator token, e.g. +
+	Token    token.Token // The operator token e.g. +
 	Left     Expression
 	Operator string
 	Right    Expression
@@ -37,15 +41,39 @@ func (ie *InfixExpression) expressionNode()      {}
 func (ie *InfixExpression) TokenLiteral() string { return ie.Token.Literal }
 func (ie *InfixExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString("(")
+
+	leftParen := false
+	rightParen := false
+
+	if left, ok := ie.Left.(*InfixExpression); ok {
+		leftParen = getPrecedence(ie.Operator) > getPrecedence(left.Operator)
+	}
+
+	if right, ok := ie.Right.(*InfixExpression); ok {
+		rightParen = getPrecedence(ie.Operator) >= getPrecedence(right.Operator)
+	}
+
+	if leftParen {
+		out.WriteString("(")
+	}
 	out.WriteString(ie.Left.String())
+	if leftParen {
+		out.WriteString(")")
+	}
+
 	out.WriteString(" " + ie.Operator + " ")
+
+	if rightParen {
+		out.WriteString("(")
+	}
 	out.WriteString(ie.Right.String())
-	out.WriteString(")")
+	if rightParen {
+		out.WriteString(")")
+	}
+
 	return out.String()
 }
 
-// CallExpression represents a function call.
 type CallExpression struct {
 	Token     token.Token // The '(' token
 	Function  Expression  // Identifier or FunctionLiteral
@@ -67,7 +95,6 @@ func (ce *CallExpression) String() string {
 	return out.String()
 }
 
-// IndexExpression represents an array index operation.
 type IndexExpression struct {
 	Token token.Token // The [ token
 	Left  Expression

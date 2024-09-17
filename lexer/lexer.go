@@ -1,6 +1,8 @@
 package lexer
 
 import (
+	"fmt"
+
 	"github.com/Tramposo1312/pawn-parser/token"
 )
 
@@ -11,10 +13,16 @@ type Lexer struct {
 	ch           byte
 	line         int
 	column       int
+	errors       []string
 }
 
 func New(input string) *Lexer {
-	l := &Lexer{input: input, line: 1, column: 0}
+	l := &Lexer{
+		input:  input,
+		line:   1,
+		column: 0,
+		errors: []string{},
+	}
 	l.readChar()
 	return l
 }
@@ -126,6 +134,7 @@ func (l *Lexer) NextToken() token.Token {
 			return l.readNumber()
 		} else {
 			tok = l.makeToken(token.ILLEGAL)
+			l.errors = append(l.errors, fmt.Sprintf("Unexpected character: %c at line %d, column %d", l.ch, l.line, l.column))
 		}
 	}
 
@@ -133,15 +142,19 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
+func (l *Lexer) Errors() []string {
+	return l.errors
+}
 func (l *Lexer) makeToken(tokenType token.TokenType) token.Token {
 	return token.Token{Type: tokenType, Literal: string(l.ch), Line: l.line, Column: l.column}
 }
 
 func (l *Lexer) makeTwoCharToken(tokenType token.TokenType) token.Token {
 	ch := l.ch
+	startColumn := l.column
 	l.readChar()
 	literal := string(ch) + string(l.ch)
-	return token.Token{Type: tokenType, Literal: literal, Line: l.line, Column: l.column - 1}
+	return token.Token{Type: tokenType, Literal: literal, Line: l.line, Column: startColumn}
 }
 
 func (l *Lexer) handlePlusOperator() token.Token {
@@ -220,7 +233,10 @@ func (l *Lexer) readIdentifier() string {
 }
 
 func (l *Lexer) readNumber() token.Token {
-	position := l.position
+	startPosition := l.position
+	startColumn := l.column
+	isFloat := false
+
 	if l.ch == '0' && (l.peekChar() == 'x' || l.peekChar() == 'X') {
 		// Hexadecimal
 		l.readChar() // consume '0'
@@ -228,7 +244,6 @@ func (l *Lexer) readNumber() token.Token {
 		for isHexDigit(l.ch) {
 			l.readChar()
 		}
-		return token.Token{Type: token.INT, Literal: l.input[position:l.position], Line: l.line, Column: l.column - (l.position - position)}
 	} else if l.ch == '0' && (l.peekChar() == 'b' || l.peekChar() == 'B') {
 		// Binary
 		l.readChar() // consume '0'
@@ -236,20 +251,32 @@ func (l *Lexer) readNumber() token.Token {
 		for l.ch == '0' || l.ch == '1' {
 			l.readChar()
 		}
-		return token.Token{Type: token.INT, Literal: l.input[position:l.position], Line: l.line, Column: l.column - (l.position - position)}
-	}
-
-	for isDigit(l.ch) {
-		l.readChar()
-	}
-	if l.ch == '.' && isDigit(l.peekChar()) {
-		l.readChar() // consume '.'
+	} else {
 		for isDigit(l.ch) {
 			l.readChar()
 		}
-		return token.Token{Type: token.FLOAT, Literal: l.input[position:l.position], Line: l.line, Column: l.column - (l.position - position)}
+		if l.ch == '.' && isDigit(l.peekChar()) {
+			isFloat = true
+			l.readChar() // consume '.'
+			for isDigit(l.ch) {
+				l.readChar()
+			}
+		}
 	}
-	return token.Token{Type: token.INT, Literal: l.input[position:l.position], Line: l.line, Column: l.column - (l.position - position)}
+
+	var tokenType token.TokenType
+	if isFloat {
+		tokenType = token.FLOAT
+	} else {
+		tokenType = token.INT
+	}
+
+	return token.Token{
+		Type:    tokenType,
+		Literal: l.input[startPosition:l.position],
+		Line:    l.line,
+		Column:  startColumn,
+	}
 }
 
 func (l *Lexer) readString() string {
@@ -263,15 +290,15 @@ func (l *Lexer) readString() string {
 	return l.input[position:l.position] // Don't include the closing quote
 }
 
-func (l *Lexer) readChar() string {
+func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
-		l.ch = 0 // End of input
-		return ""
+		l.ch = 0
+	} else {
+		l.ch = l.input[l.readPosition]
 	}
-	l.ch = l.input[l.readPosition]
 	l.position = l.readPosition
 	l.readPosition++
-	return string(l.ch)
+	l.column++
 }
 
 func (l *Lexer) readCharLiteral() string {

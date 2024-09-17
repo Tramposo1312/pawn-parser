@@ -25,6 +25,8 @@ type Visitor interface {
 	VisitArrayType(node *ArrayType) interface{}
 	VisitFunctionType(node *FunctionType) interface{}
 	VisitTaggedType(node *TaggedType) interface{}
+	VisitTagDeclaration(node *TagDeclaration) interface{}
+	VisitEnumDeclaration(node *EnumDeclaration) interface{}
 }
 
 func (p *Program) Accept(v Visitor) interface{} {
@@ -121,4 +123,12 @@ func (ft *FunctionType) Accept(v Visitor) interface{} {
 
 func (tt *TaggedType) Accept(v Visitor) interface{} {
 	return v.VisitTaggedType(tt)
+}
+
+func (td *TagDeclaration) Accept(v Visitor) interface{} {
+	return v.VisitTagDeclaration(td)
+}
+
+func (ed *EnumDeclaration) Accept(v Visitor) interface{} {
+	return v.VisitEnumDeclaration(ed)
 }

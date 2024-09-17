@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-
 	"github.com/Tramposo1312/pawn-parser/ast"
 	"github.com/Tramposo1312/pawn-parser/token"
 )
@@ -241,31 +239,4 @@ func (p *Parser) parseEnumMembers() []*ast.EnumMember {
 	}
 
 	return members
-}
-
-// Checks if the next token is of the expected type
-func (p *Parser) expectPeek(t token.TokenType) bool {
-	if p.peekTokenIs(t) {
-		p.nextToken()
-		return true
-	}
-	p.peekError(t)
-	return false
-}
-
-// Adds an error to the parser's error list
-func (p *Parser) peekError(t token.TokenType) {
-	msg := fmt.Sprintf("expected next token to be %s, got %s instead",
-		t, p.peekToken.Type)
-	p.errors = append(p.errors, msg)
-}
-
-// Checks if the next token is of the given type
-func (p *Parser) peekTokenIs(t token.TokenType) bool {
-	return p.peekToken.Type == t
-}
-
-// Checks if the current token is of the given type
-func (p *Parser) curTokenIs(t token.TokenType) bool {
-	return p.curToken.Type == t
 }

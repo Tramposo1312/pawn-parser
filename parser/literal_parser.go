@@ -77,30 +77,6 @@ func (p *Parser) parseArrayLiteral() ast.Expression {
 	return array
 }
 
-func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
-	list := []ast.Expression{}
-
-	if p.peekTokenIs(end) {
-		p.nextToken()
-		return list
-	}
-
-	p.nextToken()
-	list = append(list, p.parseExpression(LOWEST))
-
-	for p.peekTokenIs(token.COMMA) {
-		p.nextToken()
-		p.nextToken()
-		list = append(list, p.parseExpression(LOWEST))
-	}
-
-	if !p.expectPeek(end) {
-		return nil
-	}
-
-	return list
-}
-
 func (p *Parser) parseFunctionLiteral() ast.Expression {
 	lit := &ast.FunctionLiteral{Token: p.curToken}
 
@@ -154,10 +130,17 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
 		stmt := p.parseStatement()
-		if stmt != nil {
+		if stmt == nil {
+			p.errors = append(p.errors, fmt.Sprintf("Failed to parse statement in block at token: %s", p.curToken.Literal))
+		} else {
 			block.Statements = append(block.Statements, stmt)
 		}
 		p.nextToken()
+	}
+
+	if p.curTokenIs(token.EOF) {
+		p.errors = append(p.errors, "Unexpected EOF, expected }")
+		return nil
 	}
 
 	return block

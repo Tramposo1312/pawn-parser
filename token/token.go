@@ -1,4 +1,4 @@
-// token/token.go
+// token/go
 
 package token
 
@@ -13,8 +13,8 @@ type Token struct {
 
 const (
 	ILLEGAL TokenType = "ILLEGAL"
-	EOF               = "EOF"
-	COMMENT           = "COMMENT"
+	EOF     TokenType = "EOF"
+	COMMENT TokenType = "COMMENT"
 
 	// Identifiers + literals
 	IDENT  = "IDENT" // add, foobar, x, y, ...
@@ -57,6 +57,12 @@ const (
 	NOT            = "!"
 	ELLIPSIS       = "..."
 	TILDE          = "~"
+	QUESTION       = "?"
+	LTE            = "<="
+	GTE            = ">="
+	MULTIPLY       = "*"
+	DIVIDE         = "/"
+	MODULO         = "%"
 
 	// Delimiters
 	LPAREN    = "("

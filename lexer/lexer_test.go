@@ -17,7 +17,7 @@ func TestNextToken(t *testing.T) {
 		{token.IDENT, "x"},
 		{token.ASSIGN, "="},
 		{token.INT, "5"},
-		{token.ADD, "+"},
+		{token.PLUS, "+"},
 		{token.INT, "10"},
 		{token.SEMICOLON, ";"},
 		{token.EOF, ""},

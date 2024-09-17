@@ -170,7 +170,7 @@ func (ed *EnumDeclaration) String() string {
 		out.WriteString(ed.Name.String())
 		out.WriteString(" ")
 	}
-	out.WriteString("{ ... }") // Simplified for brevity
+	out.WriteString("{ ... }")
 	return out.String()
 }
 
