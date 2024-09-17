@@ -9,7 +9,7 @@ import (
 )
 
 // The entry point for parsing any literal
-func (p *Parser) parseLiteral() ast.Expression {
+func (p *Parser) parseLiteral() (ast.Expression, error) {
 	switch p.curToken.Type {
 	case token.INT:
 		return p.parseIntegerLiteral()
@@ -27,80 +27,88 @@ func (p *Parser) parseLiteral() ast.Expression {
 		return p.parseFunctionLiteral()
 	default:
 		p.errors = append(p.errors, fmt.Sprintf("unexpected token %s while parsing literal", p.curToken.Type))
-		return nil
+		return nil, nil
 	}
 }
 
-func (p *Parser) parseIntegerLiteral() ast.Expression {
+func (p *Parser) parseIntegerLiteral() (ast.Expression, error) {
 	lit := &ast.IntegerLiteral{Token: p.curToken}
 
 	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
 	if err != nil {
-		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
-		p.errors = append(p.errors, msg)
-		return nil
+		return nil, fmt.Errorf("could not parse %q as integer", p.curToken.Literal)
 	}
 
 	lit.Value = value
-	return lit
+	return lit, nil
 }
 
-func (p *Parser) parseFloatLiteral() ast.Expression {
+func (p *Parser) parseFloatLiteral() (ast.Expression, error) {
 	lit := &ast.FloatLiteral{Token: p.curToken}
 
 	value, err := strconv.ParseFloat(p.curToken.Literal, 64)
 	if err != nil {
-		msg := fmt.Sprintf("could not parse %q as float", p.curToken.Literal)
-		p.errors = append(p.errors, msg)
-		return nil
+		return nil, fmt.Errorf("could not parse %q as float", p.curToken.Literal)
 	}
 
 	lit.Value = value
-	return lit
+	return lit, nil
 }
 
-func (p *Parser) parseStringLiteral() ast.Expression {
-	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
+func (p *Parser) parseStringLiteral() (ast.Expression, error) {
+	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}, nil
 }
 
-func (p *Parser) parseBooleanLiteral() ast.Expression {
-	return &ast.BooleanLiteral{Token: p.curToken, Value: p.curToken.Type == token.TRUE}
+func (p *Parser) parseBooleanLiteral() (ast.Expression, error) {
+	return &ast.BooleanLiteral{Token: p.curToken, Value: p.curToken.Type == token.TRUE}, nil
 }
 
-func (p *Parser) parseNullLiteral() ast.Expression {
-	return &ast.NullLiteral{Token: p.curToken}
+func (p *Parser) parseNullLiteral() (ast.Expression, error) {
+	return &ast.NullLiteral{Token: p.curToken}, nil
 }
 
-func (p *Parser) parseArrayLiteral() ast.Expression {
+func (p *Parser) parseArrayLiteral() (ast.Expression, error) {
 	array := &ast.ArrayLiteral{Token: p.curToken}
-	array.Elements = p.parseExpressionList(token.RBRACK)
-	return array
+	elements, err := p.parseExpressionList(token.RBRACK)
+	if err != nil {
+		return nil, err
+	}
+	array.Elements = elements
+	return array, nil
 }
 
-func (p *Parser) parseFunctionLiteral() ast.Expression {
+func (p *Parser) parseFunctionLiteral() (ast.Expression, error) {
 	lit := &ast.FunctionLiteral{Token: p.curToken}
 
 	if !p.expectPeek(token.LPAREN) {
-		return nil
+		return nil, fmt.Errorf("expected ( after function keyword")
 	}
 
-	lit.Parameters = p.parseFunctionParameters()
+	params, err := p.parseFunctionParameters()
+	if err != nil {
+		return nil, err
+	}
+	lit.Parameters = params
 
 	if !p.expectPeek(token.LBRACE) {
-		return nil
+		return nil, fmt.Errorf("expected { after function parameters")
 	}
 
-	lit.Body = p.parseBlockStatement()
+	body, err := p.parseBlockStatement()
+	if err != nil {
+		return nil, err
+	}
+	lit.Body = body
 
-	return lit
+	return lit, nil
 }
 
-func (p *Parser) parseFunctionParameters() []*ast.Identifier {
+func (p *Parser) parseFunctionParameters() ([]*ast.Identifier, error) {
 	identifiers := []*ast.Identifier{}
 
 	if p.peekTokenIs(token.RPAREN) {
 		p.nextToken()
-		return identifiers
+		return identifiers, nil
 	}
 
 	p.nextToken()
@@ -116,32 +124,8 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 	}
 
 	if !p.expectPeek(token.RPAREN) {
-		return nil
+		return nil, fmt.Errorf("expected ) after function parameters")
 	}
 
-	return identifiers
-}
-
-func (p *Parser) parseBlockStatement() *ast.BlockStatement {
-	block := &ast.BlockStatement{Token: p.curToken}
-	block.Statements = []ast.Statement{}
-
-	p.nextToken()
-
-	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
-		stmt := p.parseStatement()
-		if stmt == nil {
-			p.errors = append(p.errors, fmt.Sprintf("Failed to parse statement in block at token: %s", p.curToken.Literal))
-		} else {
-			block.Statements = append(block.Statements, stmt)
-		}
-		p.nextToken()
-	}
-
-	if p.curTokenIs(token.EOF) {
-		p.errors = append(p.errors, "Unexpected EOF, expected }")
-		return nil
-	}
-
-	return block
+	return identifiers, nil
 }

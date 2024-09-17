@@ -6,7 +6,6 @@ import (
 	"github.com/Tramposo1312/pawn-parser/token"
 )
 
-// LetStatement represents a variable declaration statement.
 type LetStatement struct {
 	Token token.Token // the token.LET token
 	Name  *Identifier

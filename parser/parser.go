@@ -4,6 +4,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Tramposo1312/pawn-parser/ast"
 	"github.com/Tramposo1312/pawn-parser/lexer"
@@ -116,57 +117,32 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
 }
 
-func (p *Parser) ParseProgram() *ast.Program {
+func (p *Parser) ParseProgram() (*ast.Program, error) {
 	program := &ast.Program{}
 	program.Statements = []ast.Statement{}
+	var errors []string
 
 	for !p.curTokenIs(token.EOF) {
-		stmt := p.parseStatement()
-		if stmt == nil {
-			p.errors = append(p.errors, fmt.Sprintf("Failed to parse statement at token: %s", p.curToken.Literal))
+		stmt, err := p.parseStatement()
+		if err != nil {
+			errors = append(errors, err.Error())
 		} else {
 			program.Statements = append(program.Statements, stmt)
 		}
 		p.nextToken()
 	}
 
-	return program
-}
-
-func (p *Parser) parseExpression(precedence int) ast.Expression {
-	prefix := p.prefixParseFns[p.curToken.Type]
-	if prefix == nil {
-		p.noPrefixParseFnError(p.curToken.Type)
-		return nil
-	}
-	leftExp := prefix()
-
-	for !p.peekTokenIs(token.SEMICOLON) && !p.peekTokenIs(token.EOF) && precedence < p.peekPrecedence() {
-		infix := p.infixParseFns[p.peekToken.Type]
-		if infix == nil {
-			return leftExp
-		}
-
-		p.nextToken()
-
-		leftExp = infix(leftExp)
-		if leftExp == nil {
-			return nil
-		}
+	if len(errors) > 0 {
+		return nil, fmt.Errorf("parser errors:\n%s", strings.Join(errors, "\n"))
 	}
 
-	return leftExp
+	return program, nil
 }
+
 func (p *Parser) peekPrecedence() int {
-	if p, ok := precedences[p.peekToken.Type]; ok {
-		return p
-	}
-	return LOWEST
+	return precedence.GetPrecedence(p.peekToken.Type)
 }
 
 func (p *Parser) curPrecedence() int {
-	if p, ok := precedences[p.curToken.Type]; ok {
-		return p
-	}
-	return LOWEST
+	return precedence.GetPrecedence(p.curToken.Type)
 }

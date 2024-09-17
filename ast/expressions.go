@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 
+	"github.com/Tramposo1312/pawn-parser/precedence"
 	"github.com/Tramposo1312/pawn-parser/token"
 )
 
@@ -46,11 +47,11 @@ func (ie *InfixExpression) String() string {
 	rightParen := false
 
 	if left, ok := ie.Left.(*InfixExpression); ok {
-		leftParen = getPrecedence(ie.Operator) > getPrecedence(left.Operator)
+		leftParen = precedence.GetPrecedenceFromString(ie.Operator) > precedence.GetPrecedenceFromString(left.Operator)
 	}
 
 	if right, ok := ie.Right.(*InfixExpression); ok {
-		rightParen = getPrecedence(ie.Operator) >= getPrecedence(right.Operator)
+		rightParen = precedence.GetPrecedenceFromString(ie.Operator) >= precedence.GetPrecedenceFromString(right.Operator)
 	}
 
 	if leftParen {

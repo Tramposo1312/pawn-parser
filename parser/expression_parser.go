@@ -4,23 +4,24 @@ import (
 	"fmt"
 
 	"github.com/Tramposo1312/pawn-parser/ast"
+	"github.com/Tramposo1312/pawn-parser/precedence"
 	"github.com/Tramposo1312/pawn-parser/token"
 )
 
 type (
-	prefixParseFn func() ast.Expression
-	infixParseFn  func(ast.Expression) ast.Expression
+	prefixParseFn func() (ast.Expression, error)
+	infixParseFn  func(ast.Expression) (ast.Expression, error)
 )
 
-func (p *Parser) parseIdentifier() ast.Expression {
-	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+func (p *Parser) parseIdentifier() (ast.Expression, error) {
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}, nil
 }
 
-func (p *Parser) noPrefixParseFnError(t token.TokenType) {
-	p.errors = append(p.errors, fmt.Sprintf("no prefix parse function for %s found", t))
+func (p *Parser) noPrefixParseFnError(t token.TokenType) error {
+	return fmt.Errorf("no prefix parse function for %s found", t)
 }
 
-func (p *Parser) parsePrefixExpression() ast.Expression {
+func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 	expression := &ast.PrefixExpression{
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
@@ -28,16 +29,16 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 
 	p.nextToken()
 
-	expression.Right = p.parseExpression(PREFIX)
-	if expression.Right == nil {
-		p.errors = append(p.errors, fmt.Sprintf("Expected expression after prefix operator %s", expression.Operator))
-		return nil
+	right, err := p.parseExpression(precedence.PREFIX)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse expression after prefix operator %s: %v", expression.Operator, err)
 	}
+	expression.Right = right
 
-	return expression
+	return expression, nil
 }
 
-func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
 	expression := &ast.InfixExpression{
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
@@ -46,64 +47,96 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 
 	precedence := p.curPrecedence()
 	p.nextToken()
-	expression.Right = p.parseExpression(precedence)
-
-	if expression.Right == nil {
-		p.errors = append(p.errors, fmt.Sprintf("Expected expression after operator %s", expression.Operator))
-		return nil
+	right, err := p.parseExpression(precedence)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse expression after operator %s: %v", expression.Operator, err)
 	}
+	expression.Right = right
 
-	return expression
+	return expression, nil
 }
 
-func (p *Parser) parseGroupedExpression() ast.Expression {
+func (p *Parser) parseGroupedExpression() (ast.Expression, error) {
 	p.nextToken()
 
-	exp := p.parseExpression(LOWEST)
-
-	if !p.expectPeek(token.RPAREN) {
-		return nil
+	exp, err := p.parseExpression(precedence.LOWEST)
+	if err != nil {
+		return nil, err
 	}
 
-	return exp
+	if !p.expectPeek(token.RPAREN) {
+		return nil, fmt.Errorf("expected ), got %s", p.peekToken.Type)
+	}
+
+	return exp, nil
 }
 
-func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
+func (p *Parser) parseCallExpression(function ast.Expression) (ast.Expression, error) {
 	exp := &ast.CallExpression{Token: p.curToken, Function: function}
-	exp.Arguments = p.parseExpressionList(token.RPAREN)
-	return exp
+	args, err := p.parseExpressionList(token.RPAREN)
+	if err != nil {
+		return nil, err
+	}
+	exp.Arguments = args
+	return exp, nil
 }
 
-func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
+func (p *Parser) parseExpressionList(end token.TokenType) ([]ast.Expression, error) {
 	list := []ast.Expression{}
 
 	if p.peekTokenIs(end) {
 		p.nextToken()
-		return list
+		return list, nil
 	}
 
 	p.nextToken()
-	expr := p.parseExpression(LOWEST)
-	if expr == nil {
-		p.errors = append(p.errors, "Expected expression in list")
-		return nil
+	expr, err := p.parseExpression(precedence.LOWEST)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse expression in list: %v", err)
 	}
 	list = append(list, expr)
 
 	for p.peekTokenIs(token.COMMA) {
 		p.nextToken()
 		p.nextToken()
-		expr := p.parseExpression(LOWEST)
-		if expr == nil {
-			p.errors = append(p.errors, "Expected expression after comma in list")
-			return nil
+		expr, err := p.parseExpression(precedence.LOWEST)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse expression after comma in list: %v", err)
 		}
 		list = append(list, expr)
 	}
 
 	if !p.expectPeek(end) {
-		return nil
+		return nil, fmt.Errorf("expected %s, got %s", end, p.peekToken.Type)
 	}
 
-	return list
+	return list, nil
+}
+
+func (p *Parser) parseExpression(precedence int) (ast.Expression, error) {
+	prefix := p.prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+		return nil, p.noPrefixParseFnError(p.curToken.Type)
+	}
+
+	leftExp, err := prefix()
+	if err != nil {
+		return nil, err
+	}
+
+	for !p.peekTokenIs(token.SEMICOLON) && !p.peekTokenIs(token.EOF) && precedence < p.peekPrecedence() {
+		infix := p.infixParseFns[p.peekToken.Type]
+		if infix == nil {
+			return leftExp, nil
+		}
+
+		p.nextToken()
+
+		leftExp, err = infix(leftExp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return leftExp, nil
 }
