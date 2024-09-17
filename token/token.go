@@ -96,6 +96,8 @@ const (
 	FORWARD    = "forward"
 	NATIVE     = "native"
 	OPERATOR   = "operator"
+	STRUCT     = "struct"
+	TAG        = "tag"
 	PUBLIC     = "public"
 	STOCK      = "stock"
 	TAGOF      = "tagof"
