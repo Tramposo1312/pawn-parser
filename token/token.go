@@ -134,6 +134,10 @@ const (
 
 	// Preprocessor directives
 	DIRECTIVE = "#"
+	INCLUDE   = "#include"
+	DEFINE    = "#define"
+	IFDEF     = "#ifdef"
+	ENDIF     = "#endif"
 
 	// Comparison
 	EQ  = "=="

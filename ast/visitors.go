@@ -27,6 +27,12 @@ type Visitor interface {
 	VisitTaggedType(node *TaggedType) interface{}
 	VisitTagDeclaration(node *TagDeclaration) interface{}
 	VisitEnumDeclaration(node *EnumDeclaration) interface{}
+	VisitIncludeDirective(node *IncludeDirective) interface{}
+	VisitDefineDirective(node *DefineDirective) interface{}
+	VisitIfDefDirective(node *IfDefDirective) interface{}
+	VisitNativeFunctionDeclaration(node *NativeFunctionDeclaration) interface{}
+	VisitStateDeclaration(node *StateDeclaration) interface{}
+	VisitFunctionDeclaration(node *FunctionDeclaration) interface{}
 }
 
 func (p *Program) Accept(v Visitor) interface{} {
@@ -131,4 +137,27 @@ func (td *TagDeclaration) Accept(v Visitor) interface{} {
 
 func (ed *EnumDeclaration) Accept(v Visitor) interface{} {
 	return v.VisitEnumDeclaration(ed)
+}
+
+func (id *IncludeDirective) Accept(v Visitor) interface{} {
+	return v.VisitIncludeDirective(id)
+}
+
+func (dd *DefineDirective) Accept(v Visitor) interface{} {
+	return v.VisitDefineDirective(dd)
+}
+
+func (idd *IfDefDirective) Accept(v Visitor) interface{} {
+	return v.VisitIfDefDirective(idd)
+}
+
+func (nfd *NativeFunctionDeclaration) Accept(v Visitor) interface{} {
+	return v.VisitNativeFunctionDeclaration(nfd)
+}
+
+func (sd *StateDeclaration) Accept(v Visitor) interface{} {
+	return v.VisitStateDeclaration(sd)
+}
+func (fd *FunctionDeclaration) Accept(v Visitor) interface{} {
+	return v.VisitFunctionDeclaration(fd)
 }

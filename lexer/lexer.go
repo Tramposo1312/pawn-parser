@@ -58,11 +58,13 @@ func (l *Lexer) NextToken() token.Token {
 		}
 	case '/':
 		if l.peekChar() == '/' {
+			tok.Type = token.COMMENT
 			tok.Literal = l.readLineComment()
-			tok.Type = token.COMMENT
+			return tok
 		} else if l.peekChar() == '*' {
-			tok.Literal = l.readBlockComment()
 			tok.Type = token.COMMENT
+			tok.Literal = l.readBlockComment()
+			return tok
 		} else if l.peekChar() == '=' {
 			tok = l.makeTwoCharToken(token.QUO_ASSIGN)
 		} else {
@@ -121,7 +123,7 @@ func (l *Lexer) NextToken() token.Token {
 		tok.Type = token.CHAR
 		tok.Literal = l.readCharLiteral()
 	case '#':
-		tok = l.readPreprocessorDirective()
+		return l.readPreprocessorDirective()
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
@@ -226,7 +228,7 @@ func (l *Lexer) handlePipeOperator() token.Token {
 
 func (l *Lexer) readIdentifier() string {
 	position := l.position
-	for isLetter(l.ch) || isDigit(l.ch) {
+	for isLetter(l.ch) || isDigit(l.ch) || l.ch == ':' {
 		l.readChar()
 	}
 	return l.input[position:l.position]
@@ -338,13 +340,23 @@ func (l *Lexer) readBlockComment() string {
 }
 
 func (l *Lexer) readPreprocessorDirective() token.Token {
-	position := l.position
+	startPosition := l.position
 	l.readChar() // consume '#'
-	for isLetter(l.ch) {
-		l.readChar()
+
+	directive := l.readIdentifier()
+
+	switch directive {
+	case "include":
+		return token.Token{Type: token.INCLUDE, Literal: "#include", Line: l.line, Column: l.column - (l.position - startPosition)}
+	case "define":
+		return token.Token{Type: token.DEFINE, Literal: "#define", Line: l.line, Column: l.column - (l.position - startPosition)}
+	case "ifdef":
+		return token.Token{Type: token.IFDEF, Literal: "#ifdef", Line: l.line, Column: l.column - (l.position - startPosition)}
+	case "endif":
+		return token.Token{Type: token.ENDIF, Literal: "#endif", Line: l.line, Column: l.column - (l.position - startPosition)}
+	default:
+		return token.Token{Type: token.DIRECTIVE, Literal: "#" + directive, Line: l.line, Column: l.column - (l.position - startPosition)}
 	}
-	directive := l.input[position:l.position]
-	return token.Token{Type: token.DIRECTIVE, Literal: directive, Line: l.line, Column: l.column - (l.position - position)}
 }
 
 func (l *Lexer) skipWhitespace() {

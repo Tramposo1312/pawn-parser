@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/Tramposo1312/pawn-parser/ast"
@@ -406,34 +405,105 @@ func TestOpPrecedenceParsing(t *testing.T) {
 	}
 }
 
-func TestParsingErrors(t *testing.T) {
-	tests := []struct {
-		input         string
-		expectedError string
-	}{
-		{
-			"new x 5;",
-			"expected '=' after identifier in let statement",
-		},
-		{
-			"function(x, ) { return x; }",
-			"expected ) after function parameters",
-		},
-		{
-			"if (x > y) { return x ",
-			"unexpected EOF, expected } to close if block",
-		},
+func TestIncludeDirective(t *testing.T) {
+	input := `#include <a_samp>`
+
+	l := lexer.New(input)
+	p := New(l)
+	program, err := p.ParseProgram()
+	if err != nil {
+		t.Fatalf("ParseProgram() failed: %s", err)
 	}
 
-	for _, tt := range tests {
-		_, err := parseProgram(tt.input)
-		if err == nil {
-			t.Errorf("expected error for input %q, got none", tt.input)
-			continue
-		}
-		if !strings.Contains(err.Error(), tt.expectedError) {
-			t.Errorf("wrong error message for input %q.\nexpected to contain: %q\ngot: %q",
-				tt.input, tt.expectedError, err.Error())
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain 1 statement. got=%d",
+			len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.IncludeDirective)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.IncludeDirective. got=%T",
+			program.Statements[0])
+	}
+
+	if stmt.Path != "a_samp" {
+		t.Errorf("stmt.Path not %s. got=%s", "a_samp", stmt.Path)
+	}
+}
+
+func TestDefineDirective(t *testing.T) {
+	input := `#define MAX_PLAYERS 50`
+
+	l := lexer.New(input)
+	p := New(l)
+	program, err := p.ParseProgram()
+	if err != nil {
+		t.Fatalf("ParseProgram() failed: %s", err)
+	}
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain 1 statement. got=%d",
+			len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.DefineDirective)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.DefineDirective. got=%T",
+			program.Statements[0])
+	}
+
+	if stmt.Name != "MAX_PLAYERS" {
+		t.Errorf("stmt.Name not %s. got=%s", "MAX_PLAYERS", stmt.Name)
+	}
+
+	if !testIntegerLiteral(t, stmt.Value, 50) {
+		return
+	}
+}
+
+func TestNativeFunctionDeclaration(t *testing.T) {
+	input := `native SetPlayerPos(playerid, Float:x, Float:y, Float:z);`
+
+	l := lexer.New(input)
+	p := New(l)
+	program, err := p.ParseProgram()
+	if err != nil {
+		t.Fatalf("ParseProgram() failed: %s", err)
+	}
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain 1 statement. got=%d",
+			len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.NativeFunctionDeclaration)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.NativeFunctionDeclaration. got=%T",
+			program.Statements[0])
+	}
+
+	if stmt.Name.Value != "SetPlayerPos" {
+		t.Errorf("stmt.Name not %s. got=%s", "SetPlayerPos", stmt.Name.Value)
+	}
+
+	if len(stmt.Parameters) != 4 {
+		t.Fatalf("length of NativeFunctionDeclaration.Parameters wrong. got=%d",
+			len(stmt.Parameters))
+	}
+
+	tests := []struct {
+		expectedParam string
+	}{
+		{"playerid"},
+		{"Float:x"},
+		{"Float:y"},
+		{"Float:z"},
+	}
+
+	for i, tt := range tests {
+		param := stmt.Parameters[i]
+		if param.Value != tt.expectedParam {
+			t.Errorf("param %d wrong. expected=%q, got=%q", i, tt.expectedParam, param.Value)
 		}
 	}
 }

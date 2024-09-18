@@ -27,6 +27,16 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 		return p.parseTagDeclaration()
 	case token.ENUM:
 		return p.parseEnumDeclaration()
+	case token.INCLUDE:
+		return p.parseIncludeDirective()
+	case token.DEFINE:
+		return p.parseDefineDirective()
+	case token.IFDEF:
+		return p.parseIfDefDirective()
+	case token.NATIVE:
+		return p.parseNativeFunctionDeclaration()
+	case token.PUBLIC, token.STOCK:
+		return p.parseFunctionDeclaration()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -311,12 +321,14 @@ func (p *Parser) parseBlockStatement() (*ast.BlockStatement, error) {
 		if err != nil {
 			return nil, err
 		}
-		block.Statements = append(block.Statements, stmt)
+		if stmt != nil {
+			block.Statements = append(block.Statements, stmt)
+		}
 		p.nextToken()
 	}
 
 	if p.curTokenIs(token.EOF) {
-		return nil, fmt.Errorf("unexpected EOF, expected } to close if block")
+		return nil, fmt.Errorf("unexpected EOF, expected } to close block")
 	}
 
 	return block, nil

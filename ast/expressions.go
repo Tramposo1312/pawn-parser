@@ -2,7 +2,6 @@ package ast
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/Tramposo1312/pawn-parser/token"
@@ -21,7 +20,12 @@ type PrefixExpression struct {
 func (pe *PrefixExpression) expressionNode()      {}
 func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
 func (pe *PrefixExpression) String() string {
-	return fmt.Sprintf("(%s%s)", pe.Operator, pe.Right.String())
+	var out bytes.Buffer
+	out.WriteString("(")
+	out.WriteString(pe.Operator)
+	out.WriteString(pe.Right.String())
+	out.WriteString(")")
+	return out.String()
 }
 
 type InfixExpression struct {
@@ -82,25 +86,4 @@ func (ie *IndexExpression) String() string {
 	out.WriteString(ie.Index.String())
 	out.WriteString("])")
 	return out.String()
-}
-
-// QUESTIONABLE
-func isLeftAssociative(operator string) bool {
-	// Return true for left-associative operators like +, -, *, /
-	switch operator {
-	case "+", "-", "*", "/", "%", "&&", "||", "&", "|", "^", "==", "!=", "<", ">", "<=", ">=", "<<", ">>":
-		return true
-	default:
-		return false
-	}
-}
-
-func isRightAssociative(operator string) bool {
-	// Return true for right-associative operators like =, +=, -=, etc.
-	switch operator {
-	case "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=":
-		return true
-	default:
-		return false
-	}
 }

@@ -110,9 +110,7 @@ func (p *Parser) parseExpression(precedence int) (ast.Expression, error) {
 		if infix == nil {
 			return leftExp, nil
 		}
-
 		p.nextToken()
-
 		leftExp, err = infix(leftExp)
 		if err != nil {
 			return nil, err

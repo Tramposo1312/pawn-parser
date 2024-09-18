@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/Tramposo1312/pawn-parser/token"
@@ -58,7 +59,7 @@ func (ft *FunctionType) String() string {
 
 // Represents a tagged type in Pawn
 type TaggedType struct {
-	Token token.Token // the 'tag' token
+	Token token.Token //  'tag'
 	Tag   *Identifier
 	Type  Expression
 }
@@ -66,9 +67,5 @@ type TaggedType struct {
 func (tt *TaggedType) expressionNode()      {}
 func (tt *TaggedType) TokenLiteral() string { return tt.Token.Literal }
 func (tt *TaggedType) String() string {
-	var out bytes.Buffer
-	out.WriteString(tt.Tag.String())
-	out.WriteString(":")
-	out.WriteString(tt.Type.String())
-	return out.String()
+	return fmt.Sprintf("%s:%s", tt.Tag.String(), tt.Type.String())
 }

@@ -102,30 +102,3 @@ func (p *Parser) parseFunctionLiteral() (ast.Expression, error) {
 
 	return lit, nil
 }
-
-func (p *Parser) parseFunctionParameters() ([]*ast.Identifier, error) {
-	identifiers := []*ast.Identifier{}
-
-	if p.peekTokenIs(token.RPAREN) {
-		p.nextToken()
-		return identifiers, nil
-	}
-
-	p.nextToken()
-
-	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	identifiers = append(identifiers, ident)
-
-	for p.peekTokenIs(token.COMMA) {
-		p.nextToken()
-		p.nextToken()
-		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-		identifiers = append(identifiers, ident)
-	}
-
-	if !p.expectPeek(token.RPAREN) {
-		return nil, fmt.Errorf("expected ) after function parameters")
-	}
-
-	return identifiers, nil
-}
