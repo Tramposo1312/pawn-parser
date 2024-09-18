@@ -2,9 +2,9 @@ package ast
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
-	"github.com/Tramposo1312/pawn-parser/precedence"
 	"github.com/Tramposo1312/pawn-parser/token"
 )
 
@@ -21,14 +21,7 @@ type PrefixExpression struct {
 func (pe *PrefixExpression) expressionNode()      {}
 func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
 func (pe *PrefixExpression) String() string {
-	var out bytes.Buffer
-
-	out.WriteString("(")
-	out.WriteString(pe.Operator)
-	out.WriteString(pe.Right.String())
-	out.WriteString(")")
-
-	return out.String()
+	return fmt.Sprintf("(%s%s)", pe.Operator, pe.Right.String())
 }
 
 type InfixExpression struct {
@@ -43,34 +36,11 @@ func (ie *InfixExpression) TokenLiteral() string { return ie.Token.Literal }
 func (ie *InfixExpression) String() string {
 	var out bytes.Buffer
 
-	leftParen := false
-	rightParen := false
-
-	if left, ok := ie.Left.(*InfixExpression); ok {
-		leftParen = precedence.GetPrecedenceFromString(ie.Operator) > precedence.GetPrecedenceFromString(left.Operator)
-	}
-
-	if right, ok := ie.Right.(*InfixExpression); ok {
-		rightParen = precedence.GetPrecedenceFromString(ie.Operator) >= precedence.GetPrecedenceFromString(right.Operator)
-	}
-
-	if leftParen {
-		out.WriteString("(")
-	}
+	out.WriteString("(")
 	out.WriteString(ie.Left.String())
-	if leftParen {
-		out.WriteString(")")
-	}
-
 	out.WriteString(" " + ie.Operator + " ")
-
-	if rightParen {
-		out.WriteString("(")
-	}
 	out.WriteString(ie.Right.String())
-	if rightParen {
-		out.WriteString(")")
-	}
+	out.WriteString(")")
 
 	return out.String()
 }
@@ -112,4 +82,25 @@ func (ie *IndexExpression) String() string {
 	out.WriteString(ie.Index.String())
 	out.WriteString("])")
 	return out.String()
+}
+
+// QUESTIONABLE
+func isLeftAssociative(operator string) bool {
+	// Return true for left-associative operators like +, -, *, /
+	switch operator {
+	case "+", "-", "*", "/", "%", "&&", "||", "&", "|", "^", "==", "!=", "<", ">", "<=", ">=", "<<", ">>":
+		return true
+	default:
+		return false
+	}
+}
+
+func isRightAssociative(operator string) bool {
+	// Return true for right-associative operators like =, +=, -=, etc.
+	switch operator {
+	case "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=":
+		return true
+	default:
+		return false
+	}
 }

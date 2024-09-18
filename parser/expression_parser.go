@@ -38,24 +38,6 @@ func (p *Parser) parsePrefixExpression() (ast.Expression, error) {
 	return expression, nil
 }
 
-func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
-	expression := &ast.InfixExpression{
-		Token:    p.curToken,
-		Operator: p.curToken.Literal,
-		Left:     left,
-	}
-
-	precedence := p.curPrecedence()
-	p.nextToken()
-	right, err := p.parseExpression(precedence)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse expression after operator %s: %v", expression.Operator, err)
-	}
-	expression.Right = right
-
-	return expression, nil
-}
-
 func (p *Parser) parseGroupedExpression() (ast.Expression, error) {
 	p.nextToken()
 
@@ -118,13 +100,12 @@ func (p *Parser) parseExpression(precedence int) (ast.Expression, error) {
 	if prefix == nil {
 		return nil, p.noPrefixParseFnError(p.curToken.Type)
 	}
-
 	leftExp, err := prefix()
 	if err != nil {
 		return nil, err
 	}
 
-	for !p.peekTokenIs(token.SEMICOLON) && !p.peekTokenIs(token.EOF) && precedence < p.peekPrecedence() {
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
 		infix := p.infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExp, nil
@@ -139,4 +120,21 @@ func (p *Parser) parseExpression(precedence int) (ast.Expression, error) {
 	}
 
 	return leftExp, nil
+}
+func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, error) {
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+
+	precedence := p.curPrecedence()
+	p.nextToken()
+	right, err := p.parseExpression(precedence)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse expression after operator %s: %v", expression.Operator, err)
+	}
+	expression.Right = right
+
+	return expression, nil
 }

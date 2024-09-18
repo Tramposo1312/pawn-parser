@@ -118,9 +118,28 @@ func (p *Parser) parseIfStatement() (*ast.IfStatement, error) {
 
 	consequence, err := p.parseBlockStatement()
 	if err != nil {
-		return nil, err // This will now catch the EOF error from parseBlockStatement
+		return nil, err
 	}
 	stmt.Consequence = consequence
+
+	// Check if we've reached the end of input
+	if p.curTokenIs(token.EOF) {
+		return nil, fmt.Errorf("unexpected EOF, expected } to close if block")
+	}
+
+	if p.peekTokenIs(token.ELSE) {
+		p.nextToken()
+
+		if !p.expectPeek(token.LBRACE) {
+			return nil, fmt.Errorf("expected { after else")
+		}
+
+		alternative, err := p.parseBlockStatement()
+		if err != nil {
+			return nil, err
+		}
+		stmt.Alternative = alternative
+	}
 
 	return stmt, nil
 }
